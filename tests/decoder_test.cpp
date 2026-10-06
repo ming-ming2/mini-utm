@@ -107,6 +107,36 @@ TEST_CASE("IP 패킷의 끝은 Total Length로 판단한다", "[decoder]") {
     }
 }
 
+TEST_CASE("옵션이 붙은 헤더도 해석한다", "[decoder]") {
+    SECTION("IPv4 옵션이 있으면 TCP는 IHL × 4 뒤에서 시작한다") {
+        Frame f = make_syn_frame();
+        const Frame options = {0x01, 0x01, 0x01, 0x00};  // NOP, NOP, NOP, End of Option List
+        f.insert(f.begin() + kIp + 20, options.begin(), options.end());
+        f[kIp] = 0x46;                 // IHL 6 = 24바이트 헤더
+        set_u16(f, kIp + 2, 24 + 20);  // Total Length 44
+
+        const DecodedPacket p = decoded(f);
+        CHECK(p.src_port == 51234);
+        CHECK(p.dst_port == 8090);
+    }
+    SECTION("TCP 옵션이 붙은 SYN도 연결 시도로 해석한다") {
+        // 실제 SYN에 흔히 붙는 옵션: MSS 1460, SACK Permitted, Timestamps, NOP, Window Scale 7
+        Frame f = make_syn_frame();
+        const Frame options = {0x02, 0x04, 0x05, 0xB4,
+                               0x04, 0x02,
+                               0x08, 0x0A, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
+                               0x01,
+                               0x03, 0x03, 0x07};
+        f.insert(f.begin() + kTcp + 20, options.begin(), options.end());
+        f[kTcp + 12] = 0xA0;           // Data Offset 10 = 40바이트 헤더
+        set_u16(f, kIp + 2, 20 + 40);  // Total Length 60
+
+        const DecodedPacket p = decoded(f);
+        CHECK(p.src_port == 51234);
+        CHECK(p.dst_port == 8090);
+    }
+}
+
 TEST_CASE("이더넷 검사 (DESIGN 4.1)", "[decoder]") {
     SECTION("14바이트 미만이면 truncated_ethernet") {
         Frame f = make_syn_frame();
