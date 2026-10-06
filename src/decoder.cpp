@@ -162,7 +162,5 @@ DecodeResult Decoder::decode(const RawFrame& frame) const {
     packet.dst_ip = ip.dst_ip;
     packet.src_port = ports.src_port;
     packet.dst_port = ports.dst_port;
-    packet.src_mac = eth.src_mac;
-    packet.dst_mac = eth.dst_mac;
     return packet;
 }

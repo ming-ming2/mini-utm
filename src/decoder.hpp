@@ -21,8 +21,6 @@ struct DecodedPacket {
     std::uint32_t dst_ip = 0;
     std::uint16_t src_port = 0;
     std::uint16_t dst_port = 0;
-    MacAddress src_mac;
-    MacAddress dst_mac;
 };
 
 // DESIGN 4장. Stats::drops의 인덱스로도 쓰므로 순서를 바꾸면 kDropReasonCount도 확인한다

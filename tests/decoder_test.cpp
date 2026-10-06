@@ -90,8 +90,6 @@ TEST_CASE("정상 SYN 프레임은 DecodedPacket이 된다", "[decoder]") {
     CHECK(p.dst_ip == 0x0A010137);  // 10.1.1.55
     CHECK(p.src_port == 51234);
     CHECK(p.dst_port == 8090);
-    CHECK(p.src_mac == MacAddress{{0x02, 0x00, 0x00, 0x00, 0x00, 0x01}});
-    CHECK(p.dst_mac == MacAddress{{0x02, 0x00, 0x00, 0x00, 0x00, 0x02}});
 }
 
 TEST_CASE("IP 패킷의 끝은 Total Length로 판단한다", "[decoder]") {
@@ -271,6 +269,4 @@ TEST_CASE("샘플 pcap에서 연결 시도 12개를 찾는다", "[decoder][pcap]
     CHECK(first.src_port == 51234);
     CHECK(first.dst_ip == 0x0A010137);  // 10.1.1.55
     CHECK(first.dst_port == 8090);
-    CHECK(first.src_mac == MacAddress{{0x02, 0x00, 0x00, 0x00, 0x00, 0x01}});  // make_sample_pcap.py의 MAC_A
-    CHECK(first.dst_mac == MacAddress{{0x02, 0x00, 0x00, 0x00, 0x00, 0x02}});  // MAC_B
 }
