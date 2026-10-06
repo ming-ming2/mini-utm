@@ -51,6 +51,7 @@ std::optional<Options> parse_options(int argc, char* argv[]) {
     bool has_c = false;
 
     int opt;
+    
     while ((opt = getopt(argc, argv, "i:r:c:")) != -1) {
         switch (opt) {
         case 'i':

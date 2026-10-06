@@ -40,7 +40,14 @@
 | 초기화 실패는 예외로 알린다   | 설정 파일 오류, 캡처 초기화 실패처럼 시작 시 한 번 일어나고 계속 진행할 수 없는 실패는 `std::runtime_error`를 던지며, `main`이 받아 메시지를 출력하고 종료한다.               |
 | 전역 상태는 최소로 둔다       | 객체는 `main`이 소유하고 `on_frame`에는 libpcap의 user 포인터로 전달한다. 전역 변수는 시그널 핸들러가 사용하는 `pcap_t*` 하나뿐이다.                                          |
 
-언어 표준은 C++20이다(`std::variant`, `std::optional`, `std::span` 사용). g++ 11 이상으로 빌드하며, 빌드 시 `-lpcap`으로 libpcap을 링크한다.
+언어 표준은 C++20이다(`std::variant`, `std::optional`, `std::span` 사용). g++ 11 이상, CMake 3.20 이상으로 빌드한다.
+libpcap은 pkg-config로, Catch2(v2)는 `find_package`로 찾는다.
+
+```text
+cmake -S . -B build          # 처음 한 번 (빌드 설정 생성)
+cmake --build build          # 빌드: build/mini_utm, build/unit_tests
+ctest --test-dir build       # 테스트 실행 (프로젝트 루트를 작업 디렉터리로 실행)
+```
 
 ## 2. 파일 구성
 
@@ -48,7 +55,7 @@
 | --------------------------------------- | -------------------------------------------------------------------------------------------- |
 | `src/main.cpp`                          | `main`, `Context`, `Options`, `parse_options`, `print_usage`, `on_frame` 콜백, `on_signal`, `set_signal_handler` |
 | `src/capture.hpp` / `src/capture.cpp`   | `Capture`, `RawFrame`, `CaptureStats`, `to_raw_frame`, 시간 타입 별칭                        |
-| `src/decoder.hpp` / `src/decoder.cpp`   | `Decoder`, `DecodedPacket`, `DropReason`, `kDropReasonCount`, `DecodeResult`, `to_string`    |
+| `src/decoder.hpp` / `src/decoder.cpp`   | `Decoder`, `DecodedPacket`, `MacAddress`, `DropReason`, `kDropReasonCount`, `DecodeResult`, `to_string` |
 | `src/config.hpp` / `src/config.cpp`     | `Cidr`, `FwAction`, `FwRule`, `Config`, `load_config`                                        |
 | `src/firewall.hpp` / `src/firewall.cpp` | `FirewallPolicy`, `Direction`, `FwVerdict`                                                   |
 | `src/portscan.hpp` / `src/portscan.cpp` | `PortScanDetector`, `PortScanAlert`                                                          |
@@ -56,8 +63,10 @@
 | `docs/DESIGN.md`, `docs/SPEC.md`        | 설계 문서                                                                                    |
 | `tests/test_main.cpp`                   | Catch2 테스트 실행 파일의 `main` (`CATCH_CONFIG_MAIN`)                                       |
 | `tests/capture_test.cpp`                | `Capture`, `to_raw_frame` 테스트                                                             |
+| `tests/decoder_test.cpp`                | `Decoder`, `to_string` 테스트                                                                |
 | `tests/data/`                           | 테스트 입력 pcap 파일                                                                        |
 | `config/mini_utm.conf`                  | 설정 파일 예시                                                                               |
+| `CMakeLists.txt`                        | 빌드 설정. `mini_utm_core`(main.cpp를 뺀 본체, 정적 라이브러리), `mini_utm`, `unit_tests`   |
 
 Component 사이를 오가는 데이터 타입은 공용 헤더에 모으지 않고, 그 타입을 만드는 Component의 헤더에 정의한다.
 사용하는 쪽은 그 헤더를 include한다. 예외는 다음 두 가지이다.
@@ -171,7 +180,8 @@ classDiagram
 | 타입            | 종류       | 정의 위치      | 생산자 → 소비자               | 필드 / 값                                                                                                              | 참조                                       |
 | --------------- | ---------- | -------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
 | `RawFrame`      | struct     | `capture.hpp`  | `to_raw_frame` → `Decoder`    | `timestamp`(`TimePoint`), `bytes`(`std::span<const std::uint8_t>`, 크기가 캡처 길이)                                   | [DESIGN 3장](DESIGN.md#3-capture)          |
-| `DecodedPacket` | struct     | `decoder.hpp`  | `Decoder` → 탐지기, `Logger`  | `timestamp`(`TimePoint`), `src_ip`·`dst_ip`(`std::uint32_t`, 호스트 바이트 순서), `src_port`·`dst_port`(`std::uint16_t`) | [DESIGN 4.4](DESIGN.md#44-decodedpacket)   |
+| `DecodedPacket` | struct     | `decoder.hpp`  | `Decoder` → 탐지기, `Logger`  | `timestamp`(`TimePoint`), `src_ip`·`dst_ip`(`std::uint32_t`, 호스트 바이트 순서), `src_port`·`dst_port`(`std::uint16_t`), `src_mac`·`dst_mac`(`MacAddress`) | [DESIGN 4.4](DESIGN.md#44-decodedpacket)   |
+| `MacAddress`    | struct     | `decoder.hpp`  | `Decoder` → `DecodedPacket`   | `bytes`(`std::array<std::uint8_t, 6>`, 이더넷 헤더의 바이트 순서 그대로). `==` 비교를 제공한다. 다른 6바이트 값과 섞여 쓰이지 않도록 별도 타입으로 둔다 | [DESIGN 4.4](DESIGN.md#44-decodedpacket)   |
 | `DropReason`    | enum class | `decoder.hpp`  | `Decoder` → `on_frame`        | `TruncatedEthernet`, `NotIpv4`, `TruncatedIpv4`, `InvalidIpv4`, `NotTcp`, `Ipv4Fragment`, `TruncatedTcp`, `InvalidTcp`, `NotConnectionAttempt` | [DESIGN 4장](DESIGN.md#4-decoder)          |
 | `DecodeResult`  | 별칭       | `decoder.hpp`  | `Decoder` → `on_frame`        | `std::variant<DecodedPacket, DropReason>`                                                                              |                                            |
 | `FwAction`      | enum class | `config.hpp`   |                               | `Allow`, `Deny`                                                                                                        | [DESIGN 5.1](DESIGN.md#51-firewall-policy) |
@@ -276,13 +286,25 @@ libpcap 핸들을 소유하는 클래스이다. 정적 생성 함수에서 핸�
 | -------------------------------------------------- | ---------- | --------------------------------- | ----------------------------------------------------------------------------------- |
 | `DecodeResult decode(const RawFrame& frame) const` | `RawFrame` | `DecodedPacket` 또는 `DropReason` | [DESIGN 4장](DESIGN.md#4-decoder)의 검사를 순서대로 수행한다. 예외를 던지지 않는다. |
 
-내부적으로 계층별 private 메서드로 나눈다. 각 메서드는 앞 계층이 확인한 남은 바이트 범위만 읽는다.
+계층별 해석은 `decoder.cpp`의 익명 namespace 함수로 나눈다. `Decoder`는 상태가 없어 이 함수들이
+객체를 사용하지 않으므로 private 메서드로 두지 않는다. 이렇게 하면 계층 함수와 중간 결과 구조체가
+헤더에 드러나지 않고, 이를 바꾸어도 `decoder.cpp`만 다시 컴파일된다.
 
-| private 메서드    | 대응                                       | 설명                                                                    |
-| ----------------- | ------------------------------------------ | ----------------------------------------------------------------------- |
-| `decode_ethernet` | [DESIGN 4.1](DESIGN.md#41-decode-ethernet) | 이더넷 헤더를 검사하고 IPv4 시작 위치를 구한다.                         |
-| `decode_ipv4`     | [DESIGN 4.2](DESIGN.md#42-decode-ipv4)     | IPv4 헤더를 검사하고 TCP 시작 위치와 `Total Length − IHL × 4`를 구한다. |
-| `decode_tcp`      | [DESIGN 4.3](DESIGN.md#43-decode-tcp)      | TCP 헤더를 검사하고 포트를 읽는다. 연결 시도 패킷이 아니면 제외한다.     |
+각 함수는 앞 계층이 넘긴 남은 바이트 범위(`Bytes` = `std::span<const std::uint8_t>`)만 읽고,
+성공하면 다음 계층에 넘길 값을, 실패하면 `DropReason`을 `std::variant`로 반환한다.
+`decode`는 세 함수를 차례로 호출하고 첫 `DropReason`을 그대로 반환한다.
+
+| 함수 (`decoder.cpp` 내부)                                          | 대응                                       | 성공 시 반환                                                                 |
+| ------------------------------------------------------------------ | ------------------------------------------ | ---------------------------------------------------------------------------- |
+| `std::variant<EthernetFields, DropReason> decode_ethernet(Bytes frame)` | [DESIGN 4.1](DESIGN.md#41-decode-ethernet) | 목적지·출발지 MAC, IPv4 헤더부터 프레임 끝까지의 범위                        |
+| `std::variant<Ipv4Fields, DropReason> decode_ipv4(Bytes ip)`       | [DESIGN 4.2](DESIGN.md#42-decode-ipv4)     | 출발지·목적지 IP(호스트 바이트 순서), TCP 헤더부터 Total Length 끝까지의 범위(`Total Length − IHL × 4`) |
+| `std::variant<TcpFields, DropReason> decode_tcp(Bytes tcp)`        | [DESIGN 4.3](DESIGN.md#43-decode-tcp)      | 출발지·목적지 Port. 연결 시도 패킷이 아니면 `NotConnectionAttempt`           |
+
+다중 바이트 필드는 같은 파일의 `read_u16`, `read_u32`로 Big Endian 값을 읽어 호스트 바이트 순서 정수로 만든다.
+호출 전에 길이를 확인하므로 이 함수들은 범위를 검사하지 않는다.
+
+`to_string`은 `default` 없는 `switch`로 작성한다. `DropReason`에 값이 추가되었는데 이름을 빠뜨리면
+`-Wswitch` 경고가 발생한다.
 
 ### 5.4 FirewallPolicy
 

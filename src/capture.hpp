@@ -24,7 +24,7 @@ struct CaptureStats {
     std::uint32_t dropped = 0;
 };
 
-// libpcap 핸들을 소유한다(RAII). 복사는 금지하고 이동은 허용한다
+// libpcap 핸들을 소유한다. 복사는 금지하고 이동은 허용한다
 class Capture {
 public:
     static Capture open_live(const std::string& interface);

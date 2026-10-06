@@ -210,6 +210,8 @@ Mini UTM은 트래픽의 복사본을 관찰하므로([1.3](#13-동작-방식)),
 
 VLAN 태그(`0x8100`)가 붙은 프레임은 지원하지 않으며 `not_ipv4`로 제외한다.
 
+검사를 통과하면 목적지 MAC 주소(0~5번 바이트)와 출발지 MAC 주소(6~11번 바이트)를 읽어 `DecodedPacket`에 담는다.
+
 ### 4.2 Decode IPv4
 
 | 검사 항목       | 조건                                     | 실패 시                 |
@@ -258,6 +260,8 @@ Flags 검사는 헤더 형식 검사가 아니라 분석 대상 선별이다. �
 | `dst_ip`    | 목적지 IPv4 주소       |
 | `src_port`  | 출발지 TCP Port        |
 | `dst_port`  | 목적지 TCP Port        |
+| `src_mac`   | 출발지 MAC 주소        |
+| `dst_mac`   | 목적지 MAC 주소        |
 
 ## 5. Detection
 
