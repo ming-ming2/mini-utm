@@ -12,7 +12,7 @@ enum class Direction { Inbound, Outbound };
 
 struct FwVerdict {
     Direction direction;
-    std::optional<std::size_t> rule_number;  // 비어 있으면 기본 정책
+    std::optional<std::size_t> rule_number;  // 1부터 센 정책 번호. 비어 있으면 기본 정책
     FwAction action;
 };
 

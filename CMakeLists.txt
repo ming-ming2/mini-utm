@@ -40,6 +40,7 @@ add_executable(unit_tests
     tests/capture_test.cpp
     tests/config_test.cpp
     tests/decoder_test.cpp
+    tests/firewall_test.cpp
     tests/logger_test.cpp
 )
 target_link_libraries(unit_tests PRIVATE mini_utm_core Catch2::Catch2)
