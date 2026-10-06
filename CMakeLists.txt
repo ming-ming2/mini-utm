@@ -38,6 +38,7 @@ find_package(Catch2 2 REQUIRED)
 add_executable(unit_tests
     tests/test_main.cpp
     tests/capture_test.cpp
+    tests/config_test.cpp
     tests/decoder_test.cpp
     tests/logger_test.cpp
 )
