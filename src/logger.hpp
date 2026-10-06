@@ -16,6 +16,7 @@ struct Stats {
     std::uint64_t decoded = 0;
     std::array<std::uint64_t, kDropReasonCount> drops{};
     std::uint64_t fw_logs = 0;
+    std::uint64_t fw_allowed = 0;  // allow 정책에 일치한 연결 수. 로그는 출력하지 않는다
     std::uint64_t portscan_logs = 0;
 };
 

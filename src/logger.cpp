@@ -80,6 +80,7 @@ void Logger::print_stats(const Stats& stats,
              << '\n';
     }
     out_ << "[STATS] fw_logs=" << stats.fw_logs << '\n'
+         << "[STATS] fw_allowed=" << stats.fw_allowed << '\n'
          << "[STATS] portscan_logs=" << stats.portscan_logs << '\n';
     // 파일 재생에는 커널 버퍼가 관여하지 않는다
     if (capture_stats) {

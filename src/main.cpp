@@ -106,9 +106,14 @@ void on_frame(u_char* user, const pcap_pkthdr* header, const u_char* bytes) {
     const auto& packet = std::get<DecodedPacket>(result);
     ++ctx.stats.decoded;
 
+    // 허용은 경보가 아니므로 로그 없이 개수만 센다 (DESIGN 5.1 동작)
     if (const auto verdict = ctx.firewall.evaluate(packet)) {
-        ctx.logger.log_fw(packet, *verdict);
-        ++ctx.stats.fw_logs;
+        if (verdict->action == FwAction::Allow) {
+            ++ctx.stats.fw_allowed;
+        } else {
+            ctx.logger.log_fw(packet, *verdict);
+            ++ctx.stats.fw_logs;
+        }
     }
     if (const auto alert = ctx.portscan.observe(packet)) {
         ctx.logger.log_portscan(*alert);

@@ -58,6 +58,7 @@ Stats sample_stats() {
     stats.drops[static_cast<std::size_t>(DropReason::NotTcp)] = 1;
     stats.drops[static_cast<std::size_t>(DropReason::NotConnectionAttempt)] = 3;
     stats.fw_logs = 2;
+    stats.fw_allowed = 4;
     stats.portscan_logs = 1;
     return stats;
 }
@@ -75,6 +76,7 @@ const char* const kSampleStatsText =
     "[STATS] drop.invalid_tcp=0\n"
     "[STATS] drop.not_connection_attempt=3\n"
     "[STATS] fw_logs=2\n"
+    "[STATS] fw_allowed=4\n"
     "[STATS] portscan_logs=1\n";
 
 }  // namespace

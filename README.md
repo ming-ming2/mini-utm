@@ -10,8 +10,8 @@
 **Detection Only** 방식으로 동작합니다.
 
 ```text
-2026-09-29 14:03:21.482 [FW]       dir=IN  rule=#1      action=ALLOW 198.51.100.7:51240 -> 10.1.1.55:8090
 2026-09-29 14:03:21.519 [FW]       dir=IN  rule=default action=DENY  198.51.100.7:51234 -> 10.1.1.55:3306 (detect only, not blocked)
+2026-09-29 14:03:21.733 [FW]       dir=OUT rule=#3      action=DENY  10.1.1.20:40112 -> 203.0.113.10:4444 (detect only, not blocked)
 2026-09-29 14:03:22.107 [PORTSCAN] 198.51.100.7 -> 10.1.1.55 distinct_ports=10 window=1s
 ```
 <sub>목표 출력 형식 (DESIGN 6장). 로그 출력은 아직 구현 중입니다.</sub>
@@ -107,7 +107,8 @@ fw deny  203.0.113.10:4444
 | `home_net <cidr>` | 내부망 대역. 없으면 RFC 1918 사설 대역 사용 |
 | `fw <allow\|deny> <ip>:<port>` | 목적지 IP·Port 정책. 위에서부터 처음 일치한 정책 적용 |
 
-정책에 일치하지 않으면 Inbound는 Deny(로그 출력), Outbound는 Allow(로그 없음)로 판정합니다.
+정책에 일치하지 않으면 Inbound는 Deny, Outbound는 Allow로 판정합니다.
+로그는 Deny 판정만 출력하고, `allow` 정책에 일치한 연결은 종료 통계의 `fw_allowed`로 개수만 셉니다.
 
 ## 테스트
 

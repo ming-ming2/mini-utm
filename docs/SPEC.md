@@ -188,7 +188,7 @@ classDiagram
 | `Direction`     | enum class | `firewall.hpp` |                               | `Inbound`, `Outbound`                                                                                                  | [DESIGN 5.1](DESIGN.md#51-firewall-policy) |
 | `FwVerdict`     | struct     | `firewall.hpp` | `FirewallPolicy` → `Logger`   | `direction`, `rule_number`(`std::optional<std::size_t>`, 비어 있으면 기본 정책), `action`                              |                                            |
 | `PortScanAlert` | struct     | `portscan.hpp` | `PortScanDetector` → `Logger` | `timestamp`, `src_ip`, `dst_ip`, `distinct_ports`, `window`                                                            |                                            |
-| `Stats`         | struct     | `logger.hpp`   | `on_frame` → `Logger`         | `frames`, `decoded`, `drops`(`DropReason`별 개수 배열), `fw_logs`, `portscan_logs`                                     | [DESIGN 6장](DESIGN.md#6-logging)          |
+| `Stats`         | struct     | `logger.hpp`   | `on_frame` → `Logger`         | `frames`, `decoded`, `drops`(`DropReason`별 개수 배열), `fw_logs`, `fw_allowed`, `portscan_logs`                       | [DESIGN 6장](DESIGN.md#6-logging)          |
 | `CaptureStats`  | struct     | `capture.hpp`  | `Capture` → `Logger`          | `received`, `dropped`(`pcap_stats`의 `ps_recv`, `ps_drop`). 실시간 캡처에서만 생성된다.                                | [DESIGN 6장](DESIGN.md#6-logging)          |
 
 `RawFrame::bytes`는 복사본이 아니라 libpcap 내부 버퍼를 가리킨다. libpcap은 콜백이 반환되면
@@ -311,7 +311,7 @@ libpcap 핸들을 소유하는 클래스이다. 정적 생성 함수에서 핸�
 | 메서드                                                                 | 입력           | 출력                                               | 설명                                                                              |
 | ---------------------------------------------------------------------- | -------------- | -------------------------------------------------- | --------------------------------------------------------------------------------- |
 | `explicit FirewallPolicy(const Config& config)`                        | `Config`       |                                                    | `home_nets`와 `rules`를 복사하여 보관한다.                                        |
-| `std::optional<FwVerdict> evaluate(const DecodedPacket& packet) const` | 연결 시도 패킷 | 로그를 출력해야 하면 `FwVerdict`, 아니면 비어 있음 | [DESIGN 5.1](DESIGN.md#51-firewall-policy)의 매칭 규칙과 로그 출력 조건을 따른다. |
+| `std::optional<FwVerdict> evaluate(const DecodedPacket& packet) const` | 연결 시도 패킷 | 정책에 일치했거나 Inbound 기본 Deny이면 `FwVerdict`, 아니면 비어 있음 | [DESIGN 5.1](DESIGN.md#51-firewall-policy)의 매칭 규칙을 따른다. 로그 출력 여부는 `on_frame`이 `action`으로 결정한다. |
 
 `evaluate`가 비어 있는 값을 반환하는 경우:
 
@@ -459,7 +459,8 @@ libpcap이 프레임마다 호출하는 C 콜백이다. 프레임 하나의 처�
 3. `to_raw_frame(header, bytes)`로 `RawFrame`을 만든다.
 4. `decoder.decode(frame)`을 호출한다. 결과가 `DropReason`이면 `stats.drops`의 해당 사유를 증가시키고 반환한다.
 5. `stats.decoded`를 증가시킨다.
-6. `firewall.evaluate(packet)`이 값을 반환하면 `logger.log_fw`를 호출하고 `stats.fw_logs`를 증가시킨다.
+6. `firewall.evaluate(packet)`이 값을 반환하면, `action`이 `Allow`이면 `stats.fw_allowed`만 증가시키고,
+   `Deny`이면 `logger.log_fw`를 호출하고 `stats.fw_logs`를 증가시킨다([DESIGN 5.1 동작](DESIGN.md#동작)).
 7. `portscan.observe(packet)`이 값을 반환하면 `logger.log_portscan`을 호출하고 `stats.portscan_logs`를 증가시킨다.
 
 6과 7은 서로 독립적이며, 한 패킷에 대해 두 로그가 모두 출력될 수 있다.
@@ -535,7 +536,11 @@ sequenceDiagram
         CB->>FW: evaluate(packet)
         FW-->>CB: optional<FwVerdict>
         opt 값이 있으면
-            CB->>Log: log_fw(packet, verdict)
+            alt action == Allow
+                CB->>CB: stats.fw_allowed 증가
+            else action == Deny
+                CB->>Log: log_fw(packet, verdict)
+            end
         end
         CB->>PS: observe(packet)
         PS-->>CB: optional<PortScanAlert>
