@@ -34,6 +34,15 @@ std::string format_endpoint(std::uint32_t ip, std::uint16_t port) {
     return format_ip(ip) + ':' + std::to_string(port);
 }
 
+// 초 단위로 나누어떨어지면 "1s", 아니면 "500ms". 밀리초 아래는 버린다
+std::string format_duration(Duration d) {
+    const auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(d).count();
+    if (millis % 1000 == 0) {
+        return std::to_string(millis / 1000) + 's';
+    }
+    return std::to_string(millis) + "ms";
+}
+
 // 오른쪽을 공백으로 채워 width 글자로 만든다. 출력 스트림의 서식 상태를 바꾸지 않으려고 직접 채운다
 std::string pad(std::string s, std::size_t width) {
     if (s.size() < width) {
@@ -66,8 +75,12 @@ void Logger::log_fw(const DecodedPacket& packet, const FwVerdict& verdict) {
     out_ << '\n';
 }
 
-void Logger::log_portscan(const PortScanAlert& /*alert*/) {
-    // TODO: [PORTSCAN] 로그 한 줄
+// DESIGN 6장 [PORTSCAN] 로그
+void Logger::log_portscan(const PortScanAlert& alert) {
+    out_ << format_time(alert.timestamp) << ' ' << "[PORTSCAN]" << ' '
+         << format_ip(alert.src_ip) << " -> " << format_ip(alert.dst_ip)
+         << " distinct_ports=" << alert.distinct_ports
+         << " window=" << format_duration(alert.window) << '\n';
 }
 
 // DESIGN 6장. 개수가 0인 제외 사유도 출력해 실행마다 같은 줄이 나오게 한다

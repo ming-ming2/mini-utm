@@ -42,6 +42,7 @@ add_executable(unit_tests
     tests/decoder_test.cpp
     tests/firewall_test.cpp
     tests/logger_test.cpp
+    tests/portscan_test.cpp
 )
 target_link_libraries(unit_tests PRIVATE mini_utm_core Catch2::Catch2)
 

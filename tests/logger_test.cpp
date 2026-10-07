@@ -147,6 +147,26 @@ TEST_CASE("[FW] 로그: 경곗값 주소와 두 자리 정책 번호", "[logger]
           "0.0.0.0:0 -> 255.255.255.255:65535\n");
 }
 
+TEST_CASE("[PORTSCAN] 로그", "[logger]") {
+    use_utc();
+    std::ostringstream out;
+    Logger logger(out);
+
+    logger.log_portscan({kTime, ip(198, 51, 100, 7), ip(10, 1, 1, 55), 10, std::chrono::seconds{1}});
+
+    CHECK(out.str() ==
+          "2023-11-14 22:13:20.482 [PORTSCAN] 198.51.100.7 -> 10.1.1.55 distinct_ports=10 window=1s\n");
+}
+
+TEST_CASE("[PORTSCAN] 로그: 초로 나누어떨어지지 않는 윈도우는 밀리초로", "[logger]") {
+    std::ostringstream out;
+    Logger logger(out);
+
+    logger.log_portscan({kTime, ip(198, 51, 100, 7), ip(10, 1, 1, 55), 3, std::chrono::milliseconds{1500}});
+
+    CHECK(out.str().find(" window=1500ms\n") != std::string::npos);
+}
+
 TEST_CASE("[FW] 로그: 밀리초가 한 자리여도 세 자리로 채운다", "[logger]") {
     auto p = packet(ip(198, 51, 100, 7), 1, ip(10, 1, 1, 55), 2);
     p.timestamp = TimePoint{std::chrono::seconds{1700000000} + std::chrono::microseconds{7000}};

@@ -46,10 +46,10 @@ Decoder가 해석하지 못하거나 분석 대상이 아닌 프레임은 사유
 | --- | --- | --- |
 | Capture (libpcap 실시간 캡처 / pcap 재생) | ✅ 완료 | ✅ |
 | Decoder (Ethernet → IPv4 → TCP) | ✅ 완료 | ✅ |
-| Config (설정 파일 해석) | 🚧 진행 예정 | |
-| Firewall Policy | 🚧 진행 예정 | |
-| Port Scan Detector | 🚧 진행 예정 | |
-| Logger | 🚧 진행 예정 | |
+| Config (설정 파일 해석) | ✅ 완료 | ✅ |
+| Firewall Policy | ✅ 완료 | ✅ |
+| Port Scan Detector | ✅ 완료 | ✅ |
+| Logger | ✅ 완료 | ✅ |
 
 ## 시작하기
 
