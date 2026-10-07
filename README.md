@@ -14,13 +14,13 @@
 2026-09-29 14:03:21.733 [FW]       dir=OUT rule=#3      action=DENY  10.1.1.20:40112 -> 203.0.113.10:4444 (detect only, not blocked)
 2026-09-29 14:03:22.107 [PORTSCAN] 198.51.100.7 -> 10.1.1.55 distinct_ports=10 window=1s
 ```
-<sub>목표 출력 형식 (DESIGN 6장). 로그 출력은 아직 구현 중입니다.</sub>
+<sub>출력 예시 (DESIGN 6장)</sub>
 
 ## 특징
 
 - **Firewall Policy**: 내부망 대역(`home_net`)으로 방향(Inbound/Outbound)을 판별하고, 목적지 IP·Port를 정책과 First Match로 비교
 - **Port Scan Detection**: 같은 출발지가 1초 안에 같은 목적지의 서로 다른 Port 10개 이상에 연결을 시도하면 탐지 (슬라이딩 윈도우)
-- **연결 시도만 분석**: SYN(ACK 없음) 패킷만 판단 대상으로 삼아 세션당 한 번만 판단
+- **연결 시도만 분석**: SYN(ACK 없음) 패킷만 판단 대상으로 삼아 연결 시도마다 한 번만 판단
 - **Evasion / Insertion을 고려한 해석**: IP 패킷의 끝을 Total Length로 판단해 이더넷 패딩이나 덧붙인 바이트를 TCP 헤더로 오인하지 않음
 - **실시간 캡처와 pcap 재생**: 같은 입력으로 탐지 결과를 반복해서 확인 가능
 - **종료 통계**: 수신·해석·제외 사유별 개수와 커널 누락 수로 "탐지할 게 없었는지, 보지 못했는지"를 구분
@@ -91,6 +91,32 @@ sudo ./build/mini_utm -i <interface> -c config/mini_utm.conf
 `-i`와 `-r` 중 정확히 하나를 지정합니다. `Ctrl+C`(`SIGINT`)나 `SIGTERM`을 받으면 처리 중이던 프레임을 마친 뒤 종료 통계를 출력하고 끝납니다.
 
 실시간 캡처는 스위치의 미러 포트(SPAN)나 네트워크 TAP에 연결된 인터페이스에서 실행하는 것을 전제로 합니다.
+
+### 실행 결과
+
+`tests/data/sample.pcap`을 재생한 결과입니다(일부 생략). 첫 줄의 시작 메시지는 표준 에러로,
+탐지 로그와 종료 통계는 표준 출력으로 나옵니다. 로그 시각은 실행 환경의 시간대를 따릅니다.
+
+```text
+mini_utm: reading tests/data/sample.pcap (home_nets=3, rules=3)
+2023-11-15 07:13:20.000 [FW]       dir=IN  rule=default action=DENY  198.51.100.7:51234 -> 10.1.1.55:8090 (detect only, not blocked)
+2023-11-15 07:13:23.000 [FW]       dir=IN  rule=default action=DENY  203.0.113.9:60000 -> 10.1.1.55:20 (detect only, not blocked)
+...
+2023-11-15 07:13:23.900 [FW]       dir=IN  rule=default action=DENY  203.0.113.9:60000 -> 10.1.1.55:29 (detect only, not blocked)
+2023-11-15 07:13:23.900 [PORTSCAN] 203.0.113.9 -> 10.1.1.55 distinct_ports=10 window=1s
+[STATS] frames=18
+[STATS] decoded=12
+[STATS] drop.truncated_ethernet=0
+[STATS] drop.not_ipv4=2
+...
+[STATS] drop.not_connection_attempt=3
+[STATS] fw_logs=11
+[STATS] fw_allowed=0
+[STATS] portscan_logs=1
+```
+
+실시간 캡처(`-i`)에서는 시작 메시지에 종료 방법이 덧붙고, 종료 통계 끝에 커널이 수신한 프레임 수와
+버퍼 부족으로 누락한 프레임 수(`kernel_received`, `kernel_dropped`)가 추가됩니다.
 
 ### 설정 파일
 
