@@ -127,7 +127,9 @@ mini_utm -r <pcap_file> -c <config_file>
 
 1. 설정 파일을 읽어 내부망 대역과 방화벽 정책을 적재한다([5.1](#51-firewall-policy)). 실패하면 종료한다.
 2. 입력 소스(인터페이스 또는 pcap 파일)를 연다([3장](#3-capture)). 실패하면 종료한다.
-3. 프레임을 하나씩 받아 Decoder → Detection → Logger 순서로 처리한다.
+3. 입력 소스와 적재한 설정의 개수를 담은 시작 메시지를 표준 에러에 출력한다.
+   탐지 로그가 아니므로 표준 출력에 섞지 않는다.
+4. 프레임을 하나씩 받아 Decoder → Detection → Logger 순서로 처리한다.
 
 #### 종료
 

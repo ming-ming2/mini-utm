@@ -417,6 +417,7 @@ struct Context {
 | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
 | `std::optional<Options> parse_options(int argc, char* argv[])` | `getopt(argc, argv, "i:r:c:")`로 옵션을 읽는다. 옵션 문자 뒤의 `:`는 값이 따라온다는 뜻이다. 다음 경우 비어 있는 값을 반환한다. |
 | `void print_usage(const char* prog)`                       | 두 가지 실행 형식을 `stderr`에 출력한다. `prog`는 `argv[0]`(실행한 프로그램 이름)이다.       |
+| `void print_start(const Options& opts, const Config& config)` | 시작 메시지를 `stderr`에 출력한다. 아래 참고. |
 
 `parse_options`가 비어 있는 값을 반환하는 경우:
 
@@ -433,15 +434,24 @@ struct Context {
 4. `Decoder`, `FirewallPolicy(config)`, `PortScanDetector(1s, 10, 10s)`, `Logger(std::cout)`, `Stats`를 만든다.
 5. `Context`를 만든다.
 6. `g_handle = capture.handle()`로 설정하고 `set_signal_handler(on_signal)`로 `SIGINT`, `SIGTERM` 핸들러를 등록한다.
-7. `capture.run(on_frame, reinterpret_cast<u_char*>(&context))`를 호출한다. 이 호출은 파일 끝에 도달하거나 종료 시그널을 받을 때까지 반환하지 않는다.
-8. `set_signal_handler(SIG_DFL)`로 `SIGINT`, `SIGTERM`의 처리를 기본 동작으로 되돌린 뒤 `g_handle = nullptr`로 비운다.
-9. `logger.print_stats(stats, capture.stats())`로 종료 통계를 출력한다.
-10. `run`의 반환값이 `0` 또는 `PCAP_ERROR_BREAK`이면 `0`, `PCAP_ERROR`이면 오류 메시지를 출력하고 `1`을 반환한다.
+7. `print_start(opts, config)`로 시작 메시지를 `stderr`에 출력한다.
+8. `capture.run(on_frame, reinterpret_cast<u_char*>(&context))`를 호출한다. 이 호출은 파일 끝에 도달하거나 종료 시그널을 받을 때까지 반환하지 않는다.
+9. `set_signal_handler(SIG_DFL)`로 `SIGINT`, `SIGTERM`의 처리를 기본 동작으로 되돌린 뒤 `g_handle = nullptr`로 비운다.
+10. `logger.print_stats(stats, capture.stats())`로 종료 통계를 출력한다.
+11. `run`의 반환값이 `0` 또는 `PCAP_ERROR_BREAK`이면 `0`, `PCAP_ERROR`이면 오류 메시지를 출력하고 `1`을 반환한다.
 
-8단계는 `Capture`가 소멸하기 전에 시그널 핸들러가 `g_handle`을 사용하지 않게 하기 위한 것이다.
+9단계는 `Capture`가 소멸하기 전에 시그널 핸들러가 `g_handle`을 사용하지 않게 하기 위한 것이다.
 이 단계가 없으면 `Capture` 소멸 후 시그널을 받을 때 이미 닫힌 핸들로 `pcap_breakloop`를 호출하게 된다.
 핸들러를 먼저 해제하므로 `on_signal`이 `nullptr`인 `g_handle`을 보는 경우는 없다.
 이후 받은 시그널은 기본 동작에 따라 프로세스를 즉시 종료하며, 종료 통계 출력 중이라면 출력이 중단된다.
+
+7단계의 시작 메시지는 입력 소스와 적재한 설정의 개수를 보여 준다. 탐지 로그만 `stdout`에 남도록 `stderr`에 출력하며,
+대응하는 패킷이 없으므로 시각을 붙이지 않는다. `-i`일 때만 종료 방법을 덧붙인다.
+
+```text
+mini_utm: capturing on eno6 (home_nets=3, rules=3). Press Ctrl+C to stop.
+mini_utm: reading tests/data/sample.pcap (home_nets=3, rules=3)
+```
 
 2단계 이후 발생한 `std::runtime_error`는 `main`이 받아 메시지를 `stderr`에 출력하고 `1`을 반환한다.
 예외를 던지는 곳은 `load_config`(2단계)와 `Capture`의 정적 생성 함수(3단계)이다.
@@ -485,7 +495,7 @@ void set_signal_handler(void (*handler)(int));
 ```
 
 `SIGINT`와 `SIGTERM`에 `handler`를 `sigaction`으로 등록한다. 등록([6.3](#63-main-함수) 6단계)과
-해제(8단계, `SIG_DFL` 전달)에 같은 함수를 사용하여 두 시그널을 항상 함께 다룬다.
+해제(9단계, `SIG_DFL` 전달)에 같은 함수를 사용하여 두 시그널을 항상 함께 다룬다.
 `signal` 대신 `sigaction`을 사용하는 이유는 `signal`의 동작(핸들러가 한 번 실행된 뒤 기본 동작으로
 되돌아가는지 등)이 시스템마다 다르기 때문이다.
 
@@ -511,6 +521,7 @@ sequenceDiagram
     end
     Main->>Main: Decoder, FirewallPolicy, PortScanDetector, Logger, Stats, Context 생성
     Main->>OS: g_handle 설정, sigaction(SIGINT, SIGTERM)
+    Main->>Main: print_start (stderr)
     Main->>Capture: run(on_frame, &context)
 ```
 

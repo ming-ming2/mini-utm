@@ -79,6 +79,17 @@ std::optional<Options> parse_options(int argc, char* argv[]) {
     return opts;
 }
 
+// 실행 중임을 알린다. 탐지 로그와 섞이지 않게 stderr로 출력한다 (SPEC 6.3)
+void print_start(const Options& opts, const Config& config) {
+    std::cerr << "mini_utm: " << (opts.live ? "capturing on " : "reading ") << opts.source
+              << " (home_nets=" << config.home_nets.size() << ", rules=" << config.rules.size()
+              << ")";
+    if (opts.live) {
+        std::cerr << ". Press Ctrl+C to stop.";
+    }
+    std::cerr << '\n';
+}
+
 // pcap_breakloop만 호출한다 (SPEC 6.5)
 void on_signal(int /*signo*/) {
     pcap_breakloop(g_handle);
@@ -154,17 +165,20 @@ int main(int argc, char* argv[]) {
         g_handle = capture.handle();
         set_signal_handler(on_signal);
 
-        // 7. 캡처 루프. 파일 끝 또는 종료 시그널까지 반환하지 않는다
+        // 7. 시작 메시지
+        print_start(*opts, config);
+
+        // 8. 캡처 루프. 파일 끝 또는 종료 시그널까지 반환하지 않는다
         const int rc = capture.run(on_frame, reinterpret_cast<u_char*>(&context));
 
-        // 8. 핸들러를 먼저 해제한 뒤 g_handle을 비운다
+        // 9. 핸들러를 먼저 해제한 뒤 g_handle을 비운다
         set_signal_handler(SIG_DFL);
         g_handle = nullptr;
 
-        // 9. 종료 통계
+        // 10. 종료 통계
         logger.print_stats(stats, capture.stats());
 
-        // 10. 종료 코드
+        // 11. 종료 코드
         if (rc == PCAP_ERROR) {
             std::cerr << "capture error: " << pcap_geterr(capture.handle()) << '\n';
             return 1;
