@@ -151,11 +151,28 @@ TEST_CASE("경곗값을 받는다", "[config]") {
     CHECK(config.rules[1].port == 65535);
 }
 
+// config/mini_utm.conf의 내용을 그대로 옮긴 기댓값. 예시 설정을 바꾸면 여기도 같이 고친다
 TEST_CASE("저장소의 예시 설정 파일을 읽는다", "[config]") {
     const Config config = load_config("config/mini_utm.conf");
 
-    CHECK(config.home_nets.size() == 3);
-    CHECK(config.rules.size() == 2);
+    REQUIRE(config.home_nets.size() == 3);
+    CHECK(config.home_nets[0].network == ip(10, 0, 0, 0));
+    CHECK(config.home_nets[0].mask == 0xFF000000);  // /8
+    CHECK(config.home_nets[1].network == ip(172, 16, 0, 0));
+    CHECK(config.home_nets[1].mask == 0xFFF00000);  // /12
+    CHECK(config.home_nets[2].network == ip(192, 168, 0, 0));
+    CHECK(config.home_nets[2].mask == 0xFFFF0000);  // /16
+
+    REQUIRE(config.rules.size() == 3);
+    CHECK(config.rules[0].action == FwAction::Deny);
+    CHECK(config.rules[0].ip == ip(8, 8, 8, 8));
+    CHECK(config.rules[0].port == 53);
+    CHECK(config.rules[1].action == FwAction::Allow);
+    CHECK(config.rules[1].ip == ip(1, 1, 1, 1));
+    CHECK(config.rules[1].port == 443);
+    CHECK(config.rules[2].action == FwAction::Deny);
+    CHECK(config.rules[2].ip == ip(10, 1, 1, 6));
+    CHECK(config.rules[2].port == 50000);
 }
 
 TEST_CASE("열 수 없는 설정 파일이면 runtime_error", "[config][error]") {
