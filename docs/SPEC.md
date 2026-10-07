@@ -437,7 +437,7 @@ struct Context {
 7. `print_start(opts, config)`로 시작 메시지를 `stderr`에 출력한다.
 8. `capture.run(on_frame, reinterpret_cast<u_char*>(&context))`를 호출한다. 이 호출은 파일 끝에 도달하거나 종료 시그널을 받을 때까지 반환하지 않는다.
 9. `set_signal_handler(SIG_DFL)`로 `SIGINT`, `SIGTERM`의 처리를 기본 동작으로 되돌린 뒤 `g_handle = nullptr`로 비운다.
-10. `logger.print_stats(stats, capture.stats())`로 종료 통계를 출력한다.
+10. `logger.print_stats(stats, capture.stats())`로 종료 통계를 출력한다. `run`의 반환값이 `PCAP_ERROR_BREAK`(종료 시그널)이면 그 전에 `stderr`에 줄바꿈을 출력해, 터미널이 표시한 `^C` 뒤에 통계 첫 줄이 붙지 않게 한다.
 11. `run`의 반환값이 `0` 또는 `PCAP_ERROR_BREAK`이면 `0`, `PCAP_ERROR`이면 오류 메시지를 출력하고 `1`을 반환한다.
 
 9단계는 `Capture`가 소멸하기 전에 시그널 핸들러가 `g_handle`을 사용하지 않게 하기 위한 것이다.

@@ -175,7 +175,10 @@ int main(int argc, char* argv[]) {
         set_signal_handler(SIG_DFL);
         g_handle = nullptr;
 
-        // 10. 종료 통계
+        // 10. 종료 통계. 시그널로 멈췄으면 터미널에 찍힌 "^C" 뒤에서 줄을 바꾼다
+        if (rc == PCAP_ERROR_BREAK) {
+            std::cerr << '\n';
+        }
         logger.print_stats(stats, capture.stats());
 
         // 11. 종료 코드
